@@ -801,7 +801,7 @@
   </div>
 
   <main id="main-content">
-    <p class="loading-message">Fetching your library from Google Sheets</p>
+    <p class="loading-message">Loading your library...</p>
   </main>
 
   <footer class="site-footer">
@@ -809,7 +809,23 @@
     <span>Updated continuously</span>
   </footer>
 
-  <script>
+  <script type="module">
+    import { initializeApp }                          from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    import { getFirestore, collection, getDocs,
+             addDoc, writeBatch, doc, serverTimestamp }  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey:            "AIzaSyCrGvV2gdsX7ObFGhhkHbwsUSnzT8POzl4",
+      authDomain:        "booksread-36e4d.firebaseapp.com",
+      projectId:         "booksread-36e4d",
+      storageBucket:     "booksread-36e4d.firebasestorage.app",
+      messagingSenderId: "698051089795",
+      appId:             "1:698051089795:web:88f50f7d2ae2647ddad2b6"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+
     const SHEET_CSV = 'https://docs.google.com/spreadsheets/d/1zuRalFET71bg02sjHAr2xlv_8WeTi_5mESLWvjCZREc/export?format=csv';
 
     function containsHebrew(str) {
@@ -857,13 +873,27 @@
       return map[genre] || 'badge-akher';
     }
 
+    // ── Load books from Firestore ──
     async function fetchBooks() {
+      const snapshot = await getDocs(collection(db, 'books'));
+      const english  = [];
+      const hebrew   = [];
+      snapshot.forEach(docSnap => {
+        const b = docSnap.data();
+        if (b.language === 'hebrew') hebrew.push(b);
+        else english.push(b);
+      });
+      return { english, hebrew };
+    }
+
+    // ── One-time migration: run window.importBooksFromSheets() in the browser console ──
+    window.importBooksFromSheets = async function () {
+      console.log('⏳ Fetching books from Google Sheets...');
       const res   = await fetch(SHEET_CSV);
       const text  = await res.text();
       const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
 
-      const english = [];
-      const hebrew  = [];
+      const books   = [];
       let section   = null;
 
       for (let i = 1; i < lines.length; i++) {
@@ -872,13 +902,15 @@
           section = containsHebrew(title) ? 'hebrew' : 'english';
           continue;
         }
-        const book = { title, author, genre: genre || '' };
-        if (section === 'hebrew') hebrew.push(book);
-        else english.push(book);
+        books.push({ title, author: author || '', genre: genre || '', language: section || 'english', createdAt: serverTimestamp() });
       }
 
-      return { english, hebrew };
-    }
+      console.log(`📚 Importing ${books.length} books to Firestore...`);
+      const batch = writeBatch(db);
+      books.forEach(b => batch.set(doc(collection(db, 'books')), b));
+      await batch.commit();
+      console.log(`✅ Done! ${books.length} books imported. Refresh the page.`);
+    };
 
     function createCard(book, index) {
       const card = document.createElement('div');
@@ -1093,16 +1125,24 @@
     authorInput.addEventListener('input', validateForm);
     genreSelect.addEventListener('change', validateForm);
 
-    submitBtn.addEventListener('click', () => {
-      const book = {
-        title:  titleInput.value.trim(),
-        author: authorInput.value.trim(),
-        genre:  genreSelect.value,
-        language: containsHebrew(titleInput.value) ? 'hebrew' : 'english',
-      };
-      // TODO: save to Firebase
-      console.log('New book to save:', book);
-      closeModal();
+    submitBtn.addEventListener('click', async () => {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Saving...';
+      try {
+        await addDoc(collection(db, 'books'), {
+          title:     titleInput.value.trim(),
+          author:    authorInput.value.trim(),
+          genre:     genreSelect.value,
+          language:  containsHebrew(titleInput.value) ? 'hebrew' : 'english',
+          createdAt: serverTimestamp(),
+        });
+        closeModal();
+        await renderBooks();
+      } catch (err) {
+        console.error('Failed to save book:', err);
+        submitBtn.textContent = 'Error — try again';
+        submitBtn.disabled = false;
+      }
     });
 
     openBtn.addEventListener('click', openModal);
@@ -1114,8 +1154,9 @@
     // Init genre list
     populateGenres(false);
 
-    async function init() {
+    async function renderBooks() {
       const main = document.getElementById('main-content');
+      main.innerHTML = '<p class="loading-message">Loading your library...</p>';
 
       try {
         const { english, hebrew } = await fetchBooks();
@@ -1140,21 +1181,25 @@
         `;
 
         main.innerHTML = '';
-        main.appendChild(buildSection(english, false));
 
+        if (total === 0) {
+          main.innerHTML = `<p class="loading-message">No books yet — run <code>importBooksFromSheets()</code> in the browser console to import your library.</p>`;
+          return;
+        }
+
+        main.appendChild(buildSection(english, false));
         const divider = document.createElement('hr');
         divider.className = 'section-divider';
         main.appendChild(divider);
-
         main.appendChild(buildSection(hebrew, true));
 
       } catch (err) {
-        main.innerHTML = `<p class="loading-message">Couldn't load books. Make sure the Google Sheet is publicly accessible.</p>`;
+        main.innerHTML = `<p class="loading-message">Couldn't load books.</p>`;
         console.error(err);
       }
     }
 
-    init();
+    renderBooks();
   </script>
 
 </body>
