@@ -346,7 +346,7 @@
       background: var(--bg-card);
       padding: 22px 24px 20px;
       position: relative;
-      cursor: default;
+      cursor: pointer;
       transition: background 0.2s;
       animation: reveal 0.4s ease both;
       border-right: 1px solid var(--border);
@@ -714,6 +714,114 @@
       color: var(--text-dim);
     }
 
+    /* ── Summary Panel ── */
+    .summary-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 8999;
+      background: rgba(9, 6, 4, 0.55);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .summary-overlay.open { opacity: 1; pointer-events: all; }
+
+    .summary-panel {
+      position: fixed;
+      top: 0; right: 0;
+      width: 460px;
+      max-width: 100vw;
+      height: 100vh;
+      background: var(--bg-card);
+      border-left: 1px solid var(--border-s);
+      z-index: 9000;
+      transform: translateX(100%);
+      transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+      overflow-y: auto;
+      padding: 56px 40px 64px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .summary-panel.open { transform: translateX(0); }
+
+    .summary-close {
+      position: absolute;
+      top: 20px; right: 22px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 6px;
+      line-height: 1;
+      transition: color 0.15s;
+    }
+
+    .summary-close:hover { color: var(--text); }
+
+    .summary-panel-genre { margin-bottom: 18px; }
+
+    .summary-panel-title {
+      font-family: 'Cormorant', serif;
+      font-size: 2rem;
+      font-weight: 300;
+      font-style: italic;
+      line-height: 1.15;
+      color: var(--text);
+      margin-bottom: 10px;
+      letter-spacing: -0.02em;
+    }
+
+    .summary-panel-author {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      margin-bottom: 28px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .summary-panel-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.12rem;
+      line-height: 1.8;
+      color: var(--text-dim);
+    }
+
+    .summary-panel-loading {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.18em;
+      color: var(--text-muted);
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; }
+      50%       { opacity: 1;   }
+    }
+
+    .summary-panel-none {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1rem;
+      font-style: italic;
+      color: var(--text-muted);
+    }
+
+    .summary-source {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.55rem;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
     /* ── Footer ── */
     .site-footer {
       border-top: 1px solid var(--border);
@@ -809,10 +917,18 @@
     <span>Updated continuously</span>
   </footer>
 
+  <!-- Summary Panel -->
+  <div class="summary-overlay" id="summary-overlay"></div>
+  <div class="summary-panel" id="summary-panel">
+    <button class="summary-close" id="summary-close">&#x2715;</button>
+    <div id="summary-content"></div>
+  </div>
+
   <script type="module">
     import { initializeApp }                          from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
     import { getFirestore, collection, getDocs,
-             addDoc, writeBatch, doc, serverTimestamp }  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+             addDoc, writeBatch, doc, getDoc,
+             setDoc, serverTimestamp }               from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
     const firebaseConfig = {
       apiKey:            "AIzaSyCrGvV2gdsX7ObFGhhkHbwsUSnzT8POzl4",
@@ -1198,6 +1314,117 @@
         console.error(err);
       }
     }
+
+    // ── Summary: API fetchers ──
+
+    async function fetchWikipediaSummary(title, lang) {
+      try {
+        const searchUrl = `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(title)}&format=json&origin=*&srlimit=1`;
+        const searchData = await (await fetch(searchUrl)).json();
+        const hit = searchData?.query?.search?.[0];
+        if (!hit) return null;
+        const summaryRes = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(hit.title)}`);
+        if (!summaryRes.ok) return null;
+        const data = await summaryRes.json();
+        return data.extract || null;
+      } catch { return null; }
+    }
+
+    async function fetchGoogleBooksSummary(title, author) {
+      try {
+        const q   = `intitle:${title} inauthor:${author}`;
+        const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=3&fields=items(volumeInfo(title,description))`;
+        const data = await (await fetch(url)).json();
+        for (const item of data?.items ?? []) {
+          if (item.volumeInfo?.description) return item.volumeInfo.description;
+        }
+        return null;
+      } catch { return null; }
+    }
+
+    async function fetchOpenLibrarySummary(title, author) {
+      try {
+        const q    = encodeURIComponent(`${title} ${author}`);
+        const data = await (await fetch(`https://openlibrary.org/search.json?q=${q}&limit=3&fields=key`)).json();
+        for (const result of data?.docs ?? []) {
+          if (!result.key) continue;
+          const work = await (await fetch(`https://openlibrary.org${result.key}.json`)).json();
+          const desc = work.description;
+          if (desc) return typeof desc === 'string' ? desc : desc.value;
+        }
+        return null;
+      } catch { return null; }
+    }
+
+    // ── Summary: main function with Firestore cache ──
+    async function getSummary(title, author, isHebrew) {
+      const cacheId  = encodeURIComponent(`${title}|${author}`).slice(0, 500);
+      const cacheRef = doc(db, 'summaries', cacheId);
+
+      const cached = await getDoc(cacheRef);
+      if (cached.exists()) return { text: cached.data().text, source: cached.data().source };
+
+      let text = null, source = null;
+
+      if (isHebrew) {
+        text = await fetchWikipediaSummary(title, 'he');     if (text) source = 'ויקיפדיה';
+        if (!text) { text = await fetchGoogleBooksSummary(title, author); if (text) source = 'Google Books'; }
+        if (!text) { text = await fetchOpenLibrarySummary(title, author); if (text) source = 'Open Library'; }
+      } else {
+        text = await fetchGoogleBooksSummary(title, author);   if (text) source = 'Google Books';
+        if (!text) { text = await fetchWikipediaSummary(title, 'en');    if (text) source = 'Wikipedia'; }
+        if (!text) { text = await fetchOpenLibrarySummary(title, author); if (text) source = 'Open Library'; }
+      }
+
+      await setDoc(cacheRef, { text: text || '', source: source || '', title, author, cachedAt: serverTimestamp() });
+      return { text, source };
+    }
+
+    // ── Summary panel ──
+    const summaryPanel   = document.getElementById('summary-panel');
+    const summaryOverlay = document.getElementById('summary-overlay');
+    const summaryContent = document.getElementById('summary-content');
+
+    function closeSummaryPanel() {
+      summaryPanel.classList.remove('open');
+      summaryOverlay.classList.remove('open');
+    }
+
+    function openSummaryPanel(title, author, genre, isHebrew) {
+      summaryPanel.dir = isHebrew ? 'rtl' : 'ltr';
+      summaryContent.innerHTML = `
+        <div class="summary-panel-genre">${genre ? `<span class="genre-badge ${badgeClass(genre)}">${genre}</span>` : ''}</div>
+        <h2 class="summary-panel-title">${title}</h2>
+        <p class="summary-panel-author">${author}</p>
+        <p class="summary-panel-loading">Loading summary...</p>
+      `;
+      summaryPanel.classList.add('open');
+      summaryOverlay.classList.add('open');
+
+      getSummary(title, author, isHebrew).then(({ text, source }) => {
+        const el = summaryContent.querySelector('.summary-panel-loading');
+        if (!el) return;
+        if (text) {
+          el.className = 'summary-panel-text';
+          el.textContent = text;
+          if (source) el.insertAdjacentHTML('afterend', `<p class="summary-source">Source: ${source}</p>`);
+        } else {
+          el.className = 'summary-panel-none';
+          el.textContent = isHebrew ? 'לא נמצא תיאור לספר זה.' : 'No summary available for this book.';
+        }
+      });
+    }
+
+    document.getElementById('summary-close').addEventListener('click', closeSummaryPanel);
+    summaryOverlay.addEventListener('click', closeSummaryPanel);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && summaryPanel.classList.contains('open')) closeSummaryPanel(); });
+
+    // Card click — event delegation so it survives re-renders
+    document.addEventListener('click', e => {
+      const card = e.target.closest('.book-card');
+      if (!card) return;
+      openSummaryPanel(card.dataset.title, card.dataset.author, card.dataset.genre, containsHebrew(card.dataset.title));
+    });
 
     renderBooks();
   </script>
