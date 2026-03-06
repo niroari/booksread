@@ -1,60 +1,77 @@
 # Books Read — Personal Website
 
 ## What It Is
-A personal website displaying books Nir has read, pulled live from a Google Sheet.
+A personal website displaying books Nir has read, with live data from Firebase Firestore.
+Books are separated into English and Hebrew sections, searchable and filterable by genre.
+Clicking a book shows a summary pulled from Wikipedia, Google Books, or Open Library.
+
+## Live URLs
+- Site: https://booksread-pi.vercel.app/
+- Repo: https://github.com/niroari/booksread
 
 ## Data Source
-Google Sheet (public, view-only):
+Firebase Firestore — `books` collection.
+Each document: `{ title, author, genre, language, createdAt }`
+
+Original 124 books (78 English + 46 Hebrew) imported from Google Sheets via one-time migration.
+Google Sheets URL (kept for reference):
 https://docs.google.com/spreadsheets/d/1zuRalFET71bg02sjHAr2xlv_8WeTi_5mESLWvjCZREc
 
-Spreadsheet columns: Book Title | Author | Genre
-124 books: 78 English + 46 Hebrew
+## Design
+- Dark editorial aesthetic — deep warm black, amber accents, film grain
+- Fonts: Cormorant (display) + IBM Plex Mono (labels/data)
+- Text-only book cards in a tight grid (no covers — APIs were too unreliable)
+- Two sections: English (LTR) / Hebrew (RTL)
+- Genre color-coded badges on each card
+- Search + genre filter + sort (title / author / genre) per section
+- Click a card → side panel slides in with book summary
 
-## Design Decisions
-- Warm, cozy wooden library vibe
-- Dark espresso + cream color palette
-- Books displayed as cards with covers (auto-fetched by title)
-- Separated by language: English section / Hebrew section (RTL)
-- Genre shown as a color-coded badge on each card
-- Genre filter + search bar per section
-- Plain HTML + CSS + vanilla JavaScript (no frameworks)
-- Hosted on GitHub Pages
-
-## Build Plan
-- [x] Step 1 — Add Genre column to spreadsheet + fill all 124 books
-- [x] Step 1b — Style the spreadsheet (warm brown theme, genre badge colors)
-- [x] Step 1c — Add genre dropdown validation to Excel file (C3:C200)
-- [x] Step 2 — Build HTML/CSS website skeleton (layout + visual design)
-- [x] Step 3 — Connect to Google Sheets (live data pull via CSV export URL)
-- [ ] Step 4 — Book covers (pre-fetch via Python script → covers.json, avoids live API issues)
-- [ ] Step 5 — Search + genre filter (wired up, visual only for now)
-- [ ] Step 6 — Deploy to GitHub Pages
+## Features Built
+- [x] Book grid — English + Hebrew sections, RTL support
+- [x] Search, genre filter, sort per section
+- [x] Add Book modal — auto-detects Hebrew/English from title, switches genre list accordingly
+- [x] Book summary panel — slides in from right on card click
+- [x] Summary sources: Hebrew Wikipedia (he) → Google Books → Open Library (Hebrew books); Google Books → English Wikipedia → Open Library (English books)
+- [x] Summary caching in Firestore (`summaries` collection) — first fetch hits API, all subsequent clicks are instant
+- [x] Firebase Firestore as data backend
+- [x] Deployed on Vercel (auto-deploys on push to main)
 
 ## Tech Stack
-- Plain HTML + CSS + vanilla JavaScript
-- Google Sheets CSV export as data source
-- Google Books API + Open Library API for covers (to be pre-fetched)
-- GitHub Pages for hosting
+- Plain HTML + CSS + vanilla JavaScript (no frameworks)
+- Firebase Firestore (data + summary cache)
+- Vercel (hosting, auto-deploy from GitHub)
+- APIs: Google Books, Wikipedia (he + en), Open Library
 
-## Cover Strategy (decided)
-Live API calls for Hebrew books are unreliable (Google Books indexes Hebrew poorly).
-Plan: run a one-time Python script to fetch covers for all 124 books → save to covers.json.
-Website reads from covers.json instead of making live API calls.
-This also makes the site load faster.
+## Firebase Collections
+- `books` — all books: `{ title, author, genre, language, createdAt }`
+- `summaries` — cached summaries: `{ text, source, title, author, cachedAt }`
 
 ## How to Run Locally
 ```
 cd "/Users/nirozari/Projects/Books Read"
 python3 -m http.server 8080
 ```
-Then open http://localhost:8080 in your browser.
-(Must use a local server — opening index.html directly blocks network requests.)
+Open http://localhost:8080 — must use a local server (direct file open blocks Firebase requests).
+
+## How to Deploy
+```
+git add index.html
+git commit -m "description"
+git push
+```
+Vercel auto-deploys on push to main. No build step needed.
+
+## One-Time Migration (already done)
+To import books from Google Sheets into Firestore, run in the browser console:
+```
+importBooksFromSheets()
+```
 
 ## File Structure
 ```
 /Users/nirozari/Projects/Books Read/
 ├── CLAUDE.md               # Nir's preferences and working rules
 ├── PROJECT.md              # This file
-├── index.html              # The website (HTML + CSS + JS in one file)
-└── ספרים שקראתי.xlsx       # Source spreadsheet (also lives on Google Sheets)
+├── index.html              # The entire website (HTML + CSS + JS)
+└── ספרים שקראתי.xlsx       # Original spreadsheet (reference only)
 ```
