@@ -114,31 +114,45 @@
 
     .header-stats {
       display: inline-flex;
-      margin-top: 48px;
-      border-left: 1px solid var(--border);
+      margin-top: 52px;
+      border: 1px solid var(--border);
     }
 
     .stat {
-      padding: 0 28px;
+      padding: 20px 36px;
       border-right: 1px solid var(--border);
+      position: relative;
+      text-align: center;
+    }
+
+    .stat:last-child { border-right: none; }
+
+    .stat::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--amber), transparent);
     }
 
     .stat-num {
       font-family: 'Cormorant', serif;
-      font-size: 2.6rem;
+      font-size: 3.8rem;
       font-weight: 300;
       font-style: italic;
       line-height: 1;
       color: var(--amber-l);
+      display: block;
     }
 
     .stat-label {
       font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.6rem;
-      letter-spacing: 0.2em;
+      font-size: 0.58rem;
+      letter-spacing: 0.22em;
       text-transform: uppercase;
       color: var(--text-muted);
-      margin-top: 5px;
+      margin-top: 8px;
+      display: block;
     }
 
     .header-sub {
@@ -218,8 +232,9 @@
     .controls {
       display: flex;
       flex-direction: column;
-      gap: 14px;
-      margin-bottom: 32px;
+      gap: 16px;
+      margin-bottom: 36px;
+      padding: 20px 0 0;
     }
 
     .search-wrap {
@@ -304,11 +319,11 @@
     .genre-filters {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
+      gap: 7px;
     }
 
     .filter-btn {
-      padding: 4px 11px;
+      padding: 5px 13px;
       background: transparent;
       border: 1px solid var(--border);
       border-radius: 2px;
@@ -344,13 +359,14 @@
     /* ── Book Card ── */
     .book-card {
       background: var(--bg-card);
-      padding: 22px 24px 20px;
+      padding: 26px 24px 22px;
       position: relative;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background 0.2s, box-shadow 0.2s;
       animation: reveal 0.4s ease both;
       border-right: 1px solid var(--border);
       border-bottom: 1px solid var(--border);
+      border-top: 2px solid var(--card-accent, var(--border));
     }
 
     @keyframes reveal {
@@ -363,7 +379,7 @@
       position: absolute;
       top: 0; left: 0;
       width: 2px; height: 100%;
-      background: var(--amber);
+      background: var(--card-accent, var(--amber));
       transform: scaleY(0);
       transform-origin: top;
       transition: transform 0.2s ease;
@@ -371,6 +387,8 @@
 
     .book-card:hover {
       background: var(--bg-card-h);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+      z-index: 1;
     }
 
     .book-card:hover::before {
@@ -438,6 +456,24 @@
     .badge-pikziya            { background: rgba(100,80,15,0.22);  color: #CDB860; border-color: rgba(205,184,96,0.28);  }
     .badge-akher              { background: rgba(50,50,50,0.22);   color: #9A9A9A; border-color: rgba(154,154,154,0.28); }
 
+    /* ── Genre Card Accents (top border color per genre) ── */
+    .book-card:has(.badge-fiction)            { --card-accent: #D49060; }
+    .book-card:has(.badge-historical-fiction) { --card-accent: #CDB860; }
+    .book-card:has(.badge-history)            { --card-accent: #72C882; }
+    .book-card:has(.badge-science)            { --card-accent: #64B0D4; }
+    .book-card:has(.badge-science-fiction)    { --card-accent: #9880D4; }
+    .book-card:has(.badge-biography)          { --card-accent: #D470A8; }
+    .book-card:has(.badge-mystery)            { --card-accent: #C89060; }
+    .book-card:has(.badge-politics)           { --card-accent: #C8C070; }
+    .book-card:has(.badge-sifrut)             { --card-accent: #D49060; }
+    .book-card:has(.badge-historyhe)          { --card-accent: #72C882; }
+    .book-card:has(.badge-metah)              { --card-accent: #C89060; }
+    .book-card:has(.badge-bioghe)             { --card-accent: #D470A8; }
+    .book-card:has(.badge-dat)                { --card-accent: #9880D4; }
+    .book-card:has(.badge-polithe)            { --card-accent: #C8C070; }
+    .book-card:has(.badge-pikziya)            { --card-accent: #CDB860; }
+    .book-card:has(.badge-akher)              { --card-accent: #9A9A9A; }
+
     /* ── No Results ── */
     .no-results {
       font-family: 'IBM Plex Mono', monospace;
@@ -450,30 +486,42 @@
 
     /* ── Section Divider ── */
     .section-divider {
-      border: none;
+      display: flex;
+      align-items: center;
+      gap: 0;
       margin: 0 0 96px;
-      position: relative;
-      height: 1px;
+      border: none;
     }
 
-    .section-divider::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
+    .divider-line {
+      flex: 1;
       height: 1px;
-      background: linear-gradient(90deg, transparent, var(--border-s) 20%, var(--border-s) 80%, transparent);
+      background: linear-gradient(90deg, transparent, var(--border-s) 60%);
     }
 
-    .section-divider::after {
-      content: '\25C6';
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 0.5rem;
+    .divider-line:last-child {
+      background: linear-gradient(270deg, transparent, var(--border-s) 60%);
+    }
+
+    .divider-center {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 28px;
+      flex-shrink: 0;
+    }
+
+    .divider-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.58rem;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .divider-gem {
       color: var(--amber);
-      background: var(--bg);
-      padding: 0 14px;
-      line-height: 1;
+      font-size: 0.52rem;
     }
 
     /* ── Add Book Button ── */
@@ -730,16 +778,17 @@
     .summary-panel {
       position: fixed;
       top: 0; right: 0;
-      width: 460px;
+      width: 520px;
       max-width: 100vw;
       height: 100vh;
       background: var(--bg-card);
       border-left: 1px solid var(--border-s);
+      border-top: 3px solid var(--amber);
       z-index: 9000;
       transform: translateX(100%);
       transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
       overflow-y: auto;
-      padding: 56px 40px 64px;
+      padding: 52px 44px 72px;
       display: flex;
       flex-direction: column;
     }
@@ -765,10 +814,10 @@
 
     .summary-panel-title {
       font-family: 'Cormorant', serif;
-      font-size: 2rem;
+      font-size: 2.4rem;
       font-weight: 300;
       font-style: italic;
-      line-height: 1.15;
+      line-height: 1.1;
       color: var(--text);
       margin-bottom: 10px;
       letter-spacing: -0.02em;
@@ -778,17 +827,19 @@
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.62rem;
       color: var(--text-muted);
-      letter-spacing: 0.1em;
-      margin-bottom: 28px;
-      padding-bottom: 24px;
+      letter-spacing: 0.12em;
+      margin-bottom: 32px;
+      padding-bottom: 28px;
       border-bottom: 1px solid var(--border);
     }
 
     .summary-panel-text {
       font-family: 'Cormorant Garamond', serif;
-      font-size: 1.12rem;
-      line-height: 1.8;
+      font-size: 1.14rem;
+      line-height: 1.85;
       color: var(--text-dim);
+      padding-left: 16px;
+      border-left: 2px solid var(--border-s);
     }
 
     .summary-panel-loading {
@@ -804,6 +855,13 @@
       50%       { opacity: 1;   }
     }
 
+    .summary-panel[dir="rtl"] .summary-panel-text {
+      padding-left: 0;
+      padding-right: 16px;
+      border-left: none;
+      border-right: 2px solid var(--border-s);
+    }
+
     .summary-panel-none {
       font-family: 'Cormorant Garamond', serif;
       font-size: 1rem;
@@ -812,14 +870,23 @@
     }
 
     .summary-source {
-      margin-top: 24px;
-      padding-top: 16px;
-      border-top: 1px solid var(--border);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 28px;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.55rem;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.14em;
       color: var(--text-muted);
       text-transform: uppercase;
+    }
+
+    .summary-source::before {
+      content: '◆';
+      color: var(--amber);
+      font-size: 0.45rem;
     }
 
     /* ── Footer ── */
@@ -843,9 +910,13 @@
       .site-header::after { left: 24px; right: 24px; }
       main { padding: 48px 20px 80px; }
       .books-grid { grid-template-columns: 1fr; }
-      .stat { padding: 0 16px; }
-      .stat-num { font-size: 2rem; }
+      .stat { padding: 16px 20px; }
+      .stat-num { font-size: 2.6rem; }
       .site-footer { padding: 24px; flex-direction: column; gap: 8px; text-align: center; }
+      .summary-panel { width: 100vw; padding: 48px 24px 56px; }
+      .summary-panel-title { font-size: 1.9rem; }
+      .genre-filters { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
+      .filter-btn { white-space: nowrap; flex-shrink: 0; }
     }
 
     @media (min-width: 769px) and (max-width: 1100px) {
@@ -1304,8 +1375,17 @@
         }
 
         main.appendChild(buildSection(english, false));
-        const divider = document.createElement('hr');
+        const divider = document.createElement('div');
         divider.className = 'section-divider';
+        divider.innerHTML = `
+          <div class="divider-line"></div>
+          <div class="divider-center">
+            <span class="divider-label">English</span>
+            <span class="divider-gem">◆</span>
+            <span class="divider-label" dir="rtl">עברית</span>
+          </div>
+          <div class="divider-line"></div>
+        `;
         main.appendChild(divider);
         main.appendChild(buildSection(hebrew, true));
 
